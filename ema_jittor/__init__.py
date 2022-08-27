@@ -1,1 +1,1 @@
-from ema_pytorch.ema_pytorch import EMA
+from ema_jittor.ema_jittor import EMA

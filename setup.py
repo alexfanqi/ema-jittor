@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-  name = 'ema-pytorch',
+  name = 'ema-jittor',
   packages = find_packages(exclude=[]),
   version = '0.0.10',
   license='MIT',
@@ -16,7 +16,7 @@ setup(
     'exponential moving average'
   ],
   install_requires=[
-    'torch>=1.6',
+    'jittor>=1.3',
   ],
   classifiers=[
     'Development Status :: 4 - Beta',
