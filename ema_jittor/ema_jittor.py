@@ -53,6 +53,8 @@ class EMA(nn.Module):
         self.beta = beta
         self.online_model = model
         self.ema_model = ema_model
+        # is_stop_grad property is lost here with copy
+        # but it will be corrected later with copy_params_from_model_to_ema()
         if (not exists(self.ema_model)):
             try:
                 self.ema_model = copy.deepcopy(model)
@@ -71,15 +73,14 @@ class EMA(nn.Module):
         self.initted=jittor.Var([False]).stop_grad()
         self.step=jittor.Var([0]).stop_grad()
 
-    # def restore_ema_model_device(self):
-    #     device = self.initted.device
-    #     self.ema_model.to(device)
-
     def copy_params_from_model_to_ema(self):
         for (ma_params, current_params) in zip(list(self.ema_model.parameters()), list(self.online_model.parameters())):
             if (not is_float_dtype(current_params.dtype)):
                 continue
-            ma_params.assign(current_params.copy())
+            if (current_params.is_stop_grad()):
+                ma_params.assign(current_params.copy()).stop_grad()
+            else:
+                ma_params.assign(current_params.copy()).start_grad()
 
     def get_current_decay(self):
         epoch = clamp(((self.step.item() - self.update_after_step) - 1), min_value=0.0)
@@ -110,11 +111,17 @@ class EMA(nn.Module):
             if (not is_float_dtype(current_params.dtype)):
                 continue
             if (name in self.param_or_buffer_names_no_ema):
-                ma_params.assign(current_params.copy())
+                if (current_params.is_stop_grad()):
+                    ma_params.assign(current_params.copy()).stop_grad()
+                else:
+                    ma_params.assign(current_params.copy()).start_grad()
                 continue
             difference = (ma_params - current_params)
             difference.assign(difference * (1.0 - current_decay))
-            ma_params.assign(ma_params - difference)
+            if (current_params.is_stop_grad()):
+                ma_params.assign(ma_params - difference).stop_grad()
+            else:
+                ma_params.assign(ma_params - difference).start_grad()
 
     def __call__(self, *args, **kwargs):
         return self.ema_model(*args, **kwargs)
